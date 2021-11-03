@@ -11,6 +11,7 @@ import {
   Material,
   Raycaster,
   Vector2,
+  Object3D,
 } from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
@@ -54,7 +55,6 @@ class Viewer {
     document.body.appendChild(this.stats.dom);
 
     this.raycaster = new Raycaster();
-    // this.raycaster.ray.;
     this.raycaster.params.Points.threshold = 0.05;
 
     // listen for resize events
@@ -103,9 +103,29 @@ class Viewer {
     let intersection = this.raycaster.intersectObjects(
       this.scene.children[0].children[0].children
     );
+
     if (intersection.length > 0) {
-      console.log("Selected Point: ", intersection[0]);
+      intersection.sort((a, b) => {
+        return a.distanceToRay - b.distanceToRay;
+      });
+
+      this.highlightSelectedPoint(
+        intersection[0].object,
+        intersection[0].index
+      );
     }
+  }
+
+  highlightSelectedPoint(selectedPoint: Object3D, index: number) {
+    console.log("Selected Point: ", selectedPoint);
+    let points = <Mesh<BufferGeometry, Material>[]>(
+      this.scene.children[0].children[0].children
+    );
+    points
+      .find((pointsMesh) => pointsMesh.id === selectedPoint.id)
+      .geometry.attributes.color.setXYZW(index, 255, 0, 0, 255).needsUpdate =
+      true;
+    requestAnimationFrame(this.render.bind(this));
   }
 
   async loadModelAndDisplay(url: string) {
@@ -125,15 +145,16 @@ class Viewer {
         (box.min.z + box.max.z) / 2
       );
       points.matrixAutoUpdate = false;
-      points.material.needsUpdate = false;
       points.updateMatrix();
-      requestAnimationFrame(this.render.bind(this));
     }
 
     this.scene.add(model);
 
+    const userPosition =
+      url === BIG_CLOUD_GLB ? new Vector3(120, 0, 50) : new Vector3(0, -60, 0);
+
     this.setCameraControls({
-      userPosition: new Vector3(0, -60, 0),
+      userPosition: userPosition,
       lookAtPoint: new Vector3(0, 0, -30),
       far: 1000,
     });
@@ -160,5 +181,5 @@ const viewer = new Viewer(
   document.getElementById("viewer") as HTMLCanvasElement
 );
 
-viewer.loadModelAndDisplay(SMALL_CLOUD_GLB);
+viewer.loadModelAndDisplay(BIG_CLOUD_GLB);
 viewer.render();
